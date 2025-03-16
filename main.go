@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
+
 )
 
 func main() {
@@ -41,6 +43,24 @@ func main() {
 		fmt.Println("File size in bytes:", fileSize)
 		fmt.Println("File Last Modified:", fileSummary.ModTime())
 
+		if *verbose {
+			var wg sync.WaitGroup
+
+			fmt.Println("Verbose Summary Selected!")
+			if isImgFile(filename) {
+				imgFiles := []string{}
+				imgFiles = append(imgFiles, filename) // Only one file
+				// Pass list of images to the verbose summarizer
+				for _, fn := range imgFiles {
+					wg.Add(1)
+					go verboseImageSummary(fn, &wg) // verboseImageSummary(fn, &wg)
+				}
+				// Wait for all goroutines to finish
+				wg.Wait()
+				fmt.Println("Processing complete.")
+			}
+		}
+
 	// For "dir" case
 	case "dir":
 		dirname := os.Args[2]
@@ -53,7 +73,5 @@ func main() {
 			fmt.Printf("Summarizing %s but not contained subfolders", dirname)
 		}
 	}
-	if *verbose {
-		fmt.Println("Verbose Summary Selected!")
-	}
+	
 }
