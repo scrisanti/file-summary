@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"sync"
-
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 		}
 
 		fileSize := fileSummary.Size()
-		fmt.Println("File size in bytes:", fileSize)
+		fmt.Println("File Size in bytes:", fileSize)
 		fmt.Println("File Last Modified:", fileSummary.ModTime())
 
 		if *verbose {
@@ -70,7 +70,13 @@ func main() {
 		if *dirRecursive {
 			fmt.Println("Summarizing Recursively")
 		} else {
-			fmt.Printf("Summarizing %s but not contained subfolders", dirname)
+			fmt.Printf("Summarizing %s but not contained subfolders\n", dirname)
+			// Find all files in folder and group by type
+			files, totalFileSize, err := mainDirAnalyze(dirname)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Found %d files - %d MB\n", len(files), totalFileSize/1000000)
 		}
 	}
 	
