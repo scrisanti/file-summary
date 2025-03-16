@@ -1,24 +1,22 @@
 package main
 
 import (
-	"os"
 	"flag"
 	"fmt"
+	"os"
+	"sync"
+
 )
 
 func main() {
 	
 	// Flags for single files
 	fileCmd			:= flag.NewFlagSet("file", flag.ExitOnError)
-	// fileName 		:= fileCmd.String("filename", "", "Filename to analyze")
+	verbose 		:= fileCmd.Bool("verbose", false, "Enable Verbose Output")
 
 	// Flags for directories 
 	dirCmd			:= flag.NewFlagSet("dir", flag.ExitOnError)
-	// dirName 		:= dirCmd.String("directory", "", "Directory to Analyze")
 	dirRecursive 	:= dirCmd.Bool("recusrive",false,"Should all sub-directories be analyzed?")
-
-	// Define Global Flags
-	verbose 		:= flag.Bool("verbose", false, "Enable Verbose Output")
 
 	// Subcommand must be first Command
 	if len(os.Args) < 2 {
@@ -28,13 +26,41 @@ func main() {
 
 	// ------- Check All Commands ----------- //
 	switch os.Args[1] {
-	// For "file" case
+	
+		// For "file" case
 	case "file":
 		filename := os.Args[2]
 		fileCmd.Parse(os.Args[3:])
 		fmt.Printf("Filename: %s", filename)
 		fmt.Println("  tail:", fileCmd.Args())
-		// fmt.Printf("Analyzing File %s", *fileName)
+
+		fileSummary, err := fileDescribe(filename)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+
+		fileSize := fileSummary.Size()
+		fmt.Println("File size in bytes:", fileSize)
+		fmt.Println("File Last Modified:", fileSummary.ModTime())
+
+		if *verbose {
+			var wg sync.WaitGroup
+
+			fmt.Println("Verbose Summary Selected!")
+			if isImgFile(filename) {
+				imgFiles := []string{}
+				imgFiles = append(imgFiles, filename) // Only one file
+				// Pass list of images to the verbose summarizer
+				for _, fn := range imgFiles {
+					wg.Add(1)
+					go verboseImageSummary(fn, &wg) // verboseImageSummary(fn, &wg)
+				}
+				// Wait for all goroutines to finish
+				wg.Wait()
+				fmt.Println("Processing complete.")
+			}
+		}
+
 	// For "dir" case
 	case "dir":
 		dirname := os.Args[2]
@@ -47,7 +73,5 @@ func main() {
 			fmt.Printf("Summarizing %s but not contained subfolders", dirname)
 		}
 	}
-	if *verbose {
-		fmt.Println("Verbose Summary Selected!")
-	}
+	
 }
