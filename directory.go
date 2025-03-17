@@ -3,11 +3,15 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
+
+	// "log"
+	"context"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 	// "sync"
 	//"github.com/h2non/filetype"
 )
@@ -16,22 +20,27 @@ func mainDirAnalyze(rootDir string) ([]string, int, error){
 	files,totalFileSize, err := walkDirectory(rootDir)
 	
 	var wg sync.WaitGroup
+	ctx := context.Background()
+	g, _ :=errgroup.WithContext(ctx)
+	g.SetLimit(1000) // Set Limit on Number of concurrent Goroutines
+
 	runningSum := 0
 
 	timeStart := time.Now()
 	for _, file := range files { 
 		wg.Add(1)
 
-		go func() {
+		g.Go( func() error {
 			defer wg.Done()
 			lineCount, err := worker(file)
 				if err != nil {
-					log.Fatal(err)
+					fmt.Printf("Error reading %s: %s\n", file, err)
+					return err
 				}
-			fmt.Printf("%s has %d lines\n", filepath.Base(file), lineCount)
+			// fmt.Printf("%s has %d lines\n", filepath.Base(file), lineCount)
 			runningSum += lineCount
-
-		}()
+				return nil
+		})
 		
 		}
 	
@@ -60,8 +69,8 @@ func walkDirectory(rootDir string) ([]string, int, error) {
 }
 
 func worker(fn string) (int, error){
-	fmt.Printf("Reading File: %s\n", filepath.Base(fn))
-	fileStartRead := time.Now()
+	// fmt.Printf("Reading File: %s\n", filepath.Base(fn))
+	// fileStartRead := time.Now()
 
 	file, err := os.Open(fn)
 	if err != nil {
@@ -82,8 +91,8 @@ func worker(fn string) (int, error){
 	if err := scanner.Err(); err != nil {
 		return 0, err	
 	}
-	fileEndRead := time.Now()
-	fmt.Printf("Done Reading: %s - %v\n", filepath.Base(fn), fileEndRead.Sub(fileStartRead))
+	// fileEndRead := time.Now()
+	// fmt.Printf("Done Reading: %s - %v\n", filepath.Base(fn), fileEndRead.Sub(fileStartRead))
 
 	return lineCount, nil
 
