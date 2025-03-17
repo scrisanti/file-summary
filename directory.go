@@ -14,8 +14,7 @@ import (
 
 func mainDirAnalyze(rootDir string) ([]string, int, error){
 	files,totalFileSize, err := walkDirectory(rootDir)
-	// Go Routine for meta analysis
-	// ch := make(chan int) // Create a channel of type int
+	
 	var wg sync.WaitGroup
 	runningSum := 0
 
@@ -49,6 +48,7 @@ func walkDirectory(rootDir string) ([]string, int, error) {
 	var files []string
 	var totalFileSize int
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		// TODO: Implement Recursive File Description
 		// Only look at sub-directories if recursive is true
 		if !info.IsDir() {
 			files = append(files, path)
@@ -61,6 +61,7 @@ func walkDirectory(rootDir string) ([]string, int, error) {
 
 func worker(fn string) (int, error){
 	fmt.Printf("Reading File: %s\n", filepath.Base(fn))
+	fileStartRead := time.Now()
 
 	file, err := os.Open(fn)
 	if err != nil {
@@ -68,7 +69,11 @@ func worker(fn string) (int, error){
 	}
 	defer file.Close()
 
+	// Some files need larger buffers
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
 	lineCount := 0
 	for scanner.Scan() {
 		lineCount++
@@ -77,7 +82,8 @@ func worker(fn string) (int, error){
 	if err := scanner.Err(); err != nil {
 		return 0, err	
 	}
-	fmt.Printf("Done Reading: %s\n", filepath.Base(fn))
+	fileEndRead := time.Now()
+	fmt.Printf("Done Reading: %s - %v\n", filepath.Base(fn), fileEndRead.Sub(fileStartRead))
 
 	return lineCount, nil
 
